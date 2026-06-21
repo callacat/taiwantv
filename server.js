@@ -191,6 +191,7 @@ app.get('/status', (req, res) => {
 //  定时刷新
 // ============================================================
 
+refreshChannels();
 setInterval(refreshChannels, 3 * 60 * 60 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
