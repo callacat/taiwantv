@@ -11,12 +11,20 @@ const DATA_FILE = path.join(DATA_DIR, 'sources.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const SOURCES = ['https://t.freetv.fun/m3u/taiwan.txt'];
 
-// TCP connection pool for better throughput
-const http = require('http');
-const https = require('https');
-const agentOpts = { keepAlive: true, maxSockets: 64 };
-const httpAgent = new http.Agent(agentOpts);
-const httpsAgent = new https.Agent(agentOpts);
+// ─── SOCKS5 代理 (Mihomo) ─────────────────────
+const SOCKS_PROXY = process.env.SOCKS5_PROXY;
+let socksAgent = null;
+if (SOCKS_PROXY) {
+  const { SocksProxyAgent } = require('socks-proxy-agent');
+  socksAgent = new SocksProxyAgent(SOCKS_PROXY);
+  console.log(`[代理] SOCKS5 ${SOCKS_PROXY}`);
+}
+
+// ─── 根据 geo 标记选择 agent ──────────────────
+function pickAgent(geo) {
+  if (geo && socksAgent) return socksAgent;
+  return undefined;
+}
 
 // ─── Parse ───
 function parseTXT(text) {
@@ -33,7 +41,7 @@ function parseTXT(text) {
     const name = rn.replace(/\[.*?\]/g, '').trim();
     const geo = rn.includes('geo-blocked');
     const prio = url.startsWith('http') && !geo ? 3 : url.startsWith('http') ? 2 : 1;
-    if (!map[name] || prio > (map[name]._prio || 0)) map[name] = { name: sify(name), url, group: sify(group), _prio: prio };
+    if (!map[name] || prio > (map[name]._prio || 0)) map[name] = { name: sify(name), url, group: sify(group), geo, _prio: prio };
   }
   return Object.values(map).map(({ _prio, ...c }) => c);
 }
@@ -87,10 +95,11 @@ app.get('/proxy/:name', async (req, res) => {
   const ch = global.channels.find(c => c.name === decodeURIComponent(req.params.name));
   if (!ch) return res.status(404).send('Not found');
   try {
+    const agent = pickAgent(ch.geo);
     const r = await axios.get(ch.url, {
       responseType: 'arraybuffer', timeout: 15000,
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://freetv.fun/' },
-      httpAgent, httpsAgent,
+      httpAgent: agent, httpsAgent: agent,
     });
     const ct = r.headers['content-type'] || '';
     const body = r.data;
@@ -133,7 +142,7 @@ app.get('/seg/:b64', async (req, res) => {
     const r = await axios.get(url, {
       responseType: 'arraybuffer', timeout: 20000,
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://freetv.fun/' },
-      httpAgent, httpsAgent,
+      httpAgent: socksAgent, httpsAgent: socksAgent,
     });
     const ct = r.headers['content-type'] || '';
     const body = Buffer.from(r.data);

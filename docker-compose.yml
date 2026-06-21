@@ -7,9 +7,16 @@ services:
     environment:
       - DATA_DIR=/data
       - PORT=3000
+      - SOCKS5_PROXY=socks5://mihomo:7890
     volumes:
       - data:/data
     restart: unless-stopped
+    networks:
+      - 1panel-network
+
+networks:
+  1panel-network:
+    external: true
 
 volumes:
   data:
