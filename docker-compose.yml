@@ -1,0 +1,15 @@
+services:
+  taiwantv:
+    build: .
+    container_name: taiwantv
+    ports:
+      - "3000:3000"
+    environment:
+      - DATA_DIR=/data
+      - PORT=3000
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+volumes:
+  data:
