@@ -7,9 +7,18 @@ services:
     environment:
       - DATA_DIR=/data
       - PORT=3000
+      # 启用 SOCKS5 代理（走 Mihomo）时取消注释：
+      # - SOCKS5_PROXY=socks5://mihomo:7890
     volumes:
       - data:/data
     restart: unless-stopped
+    # 连 Mihomo 时取消注释：
+    # networks:
+    #   - 1panel-network
 
 volumes:
   data:
+
+# networks:
+#   1panel-network:
+#     external: true

@@ -11,6 +11,16 @@ const DATA_FILE = path.join(DATA_DIR, 'channels.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ============================================================
+//  SOCKS5 代理 (通过环境变量启用)
+// ============================================================
+const SOCKS5_PROXY = process.env.SOCKS5_PROXY;
+let socksAgent = null;
+if (SOCKS5_PROXY) {
+  const { SocksProxyAgent } = require('socks-proxy-agent');
+  socksAgent = new SocksProxyAgent(SOCKS5_PROXY);
+}
+
+// ============================================================
 //  多源直播源 (自动采集合并)
 // ============================================================
 
@@ -117,9 +127,11 @@ app.get('/proxy/:name', async (req, res) => {
   if (!ch) return res.status(404).send('Not found');
 
   try {
+    const agent = socksAgent || undefined;
     const resp = await axios.get(ch.url, {
       responseType: 'arraybuffer', timeout: 15000,
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://freetv.fun/' },
+      httpAgent: agent, httpsAgent: agent,
     });
     const ct = resp.headers['content-type'] || '';
     const buf = Buffer.from(resp.data);
@@ -158,9 +170,11 @@ function rewriteM3U(body, vps, cdnBase) {
 app.get('/seg/:b64', async (req, res) => {
   try {
     const url = Buffer.from(req.params.b64, 'base64url').toString();
+    const agent = socksAgent || undefined;
     const resp = await axios.get(url, {
       responseType: 'arraybuffer', timeout: 20000,
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://freetv.fun/' },
+      httpAgent: agent, httpsAgent: agent,
     });
     const ct = resp.headers['content-type'] || '';
     const buf = Buffer.from(resp.data);
