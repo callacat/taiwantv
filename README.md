@@ -4,55 +4,68 @@ TVBox 订阅源 + HLS 透明代理。从 `t.freetv.fun` 拉取台湾直播源，
 
 ## 订阅地址
 
-| 格式 | 地址 | 适用 App |
-|------|------|---------|
-| **TVBox JSON** | `https://raw.githubusercontent.com/callacat/taiwantv/main/cloudflare-worker.js` (部署到 CF Workers 后获得 URL) | 影视仓 / TVBox |
-| **TXT** | 同上 | 直播源 TXT App |
-| **M3U** | 同上 | IPTV Smarters / OTT Navigator / VLC |
+VPS 部署后:
+- `http://你的VPS:3000/tvbox.json` — TVBox JSON
+- `http://你的VPS:3000/taiwan.txt` — TXT
+- `http://你的VPS:3000/taiwan.m3u` — M3U
 
-## 部署
-
-### VPS Docker
-
-```bash
-docker compose up -d
-# 订阅地址: http://你的VPS:3000/tvbox.json
-```
-
-### Cloudflare Workers (备用/CDN)
-
-1. 在 Cloudflare Dashboard → Workers & Pages → 创建 Worker
-2. 复制 `cloudflare-worker.js` 内容粘贴
-3. 部署后获得 `https://你的worker名.workers.dev/tvbox.json`
-
-## CF Workers 限制
-
-- 提供频道列表 (JSON/TXT/M3U)
-- 支持简单流转发 (m3u8 代理)
-- TS 片段代理性能受限 (Worker CPU 超时限制)
-- 建议作为 VPS 版的**备用和 CDN 分发**
+CF Workers 部署后:
+- `https://你的worker名.workers.dev/tvbox.json`
+- `https://你的worker名.workers.dev/taiwan.txt`
+- `https://你的worker名.workers.dev/taiwan.m3u`
 
 ## 架构
 
 ```
-VPS (主):             CF Workers (备用):
-Node.js + Docker       Cloudflare Worker
-├─ 频道列表 3种格式    ├─ 频道列表 3种格式
-├─ HLS 透明代理        ├─ 简单流转发
-├─ 繁体→简体           └─ CDN 分发
+VPS (主):                        CF Workers (备用):
+Node.js + Docker                 Cloudflare Worker
+├─ 频道列表 3种格式              ├─ 频道列表 3种格式
+├─ HLS 透明代理 (全链路)          ├─ 简单流转发
+├─ 繁体→简体                     └─ CDN 分发
 └─ 定时更新源
+```
+
+## 部署
+
+### VPS Docker (主)
+
+```bash
+docker compose up -d
+```
+
+GitHub Action 自动构建: 推送代码到 `main` 或打 `v*` tag 即自动构建 Docker 镜像到 `ghcr.io/callacat/taiwantv`。
+
+### Cloudflare Workers (备用，自动从仓库构建)
+
+**设置步骤 (一次性的，3分钟):**
+
+1. 打开 https://dash.cloudflare.com → Workers & Pages
+2. 点击 **创建** → **Pages** → **连接到 Git**
+3. 授权 GitHub，选择 `callacat/taiwantv`
+4. 构建配置:
+   - 框架预设: **无**
+   - 构建命令: (留空)
+   - 输出目录: (留空)
+5. 点击 **保存并部署**
+
+之后每次推送到 GitHub，CF Pages 会自动重新部署 Worker，无需手动操作。
+
+> 或者手动部署: 复制 `cloudflare-worker.js` → 粘贴到 Workers Dashboard → 部署。
+
+## CF Workers 限制
+
+- 提供完整频道列表 (JSON/TXT/M3U)
+- 支持简单 m3u8 流转发
+- TS 片段代理受限于 Worker CPU 配额 (10ms/请求，高清流可能超限)
+- 建议作为 VPS 版的**备用和前端 CDN**
+
+## 版本管理
+
+```
+git tag v1.0.1          # 打tag
+git push --tags          # 触发GHA Docker构建 + CF Pages部署
 ```
 
 ## 源
 
-默认源: `https://t.freetv.fun/m3u/taiwan.txt`
-
-频道分 11 组 (新闻/综合/综艺/电影/运动/儿童/知识/音乐/其它/世界杯)，约 92 频道。
-
-## 前台部署 (CF Pages)
-
-`cloudflare-worker.js` 可以直接部署到 Cloudflare Workers，无需任何配置。
-
-## 版本管理
-
-见 `VERSIONING.md`。
+默认源: `https://t.freetv.fun/m3u/taiwan.txt`（约 92 频道，11 分组）
