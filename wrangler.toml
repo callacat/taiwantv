@@ -1,9 +1,3 @@
 name = "taiwantv"
 main = "cloudflare-worker.js"
 compatibility_date = "2026-06-01"
-
-[placement]
-mode = "smart"
-
-[limits]
-cpu_ms = 1000
