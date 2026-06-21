@@ -1,6 +1,6 @@
 services:
   taiwantv:
-    build: .
+    image: ghcr.io/callacat/taiwantv:latest
     container_name: taiwantv
     ports:
       - "3000:3000"

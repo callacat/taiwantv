@@ -1,8 +1,13 @@
-FROM node:20-alpine
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
-COPY server.js .
+COPY go.mod .
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /taiwantv .
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /taiwantv /taiwantv
 EXPOSE 3000
 VOLUME ["/data"]
-CMD ["node", "server.js"]
+CMD ["/taiwantv"]
